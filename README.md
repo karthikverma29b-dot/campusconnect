@@ -50,6 +50,19 @@ campusconnect/
 
 You need Python 3.9 or newer.
 
+> [!TIP]
+> **Run the app with these three commands:**
+>
+> ```bash
+> pip install -r requirements.txt
+> cd backend
+> uvicorn main:app --reload
+> ```
+>
+> Then open <http://127.0.0.1:8000>.
+
+Full setup from a fresh clone:
+
 ```bash
 # 1. Clone the repository
 git clone <your-repo-url>
