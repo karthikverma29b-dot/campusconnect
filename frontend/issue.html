@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CampusConnect - Issue details</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar" id="navbar"></header>
+
+  <main class="container" style="max-width:760px">
+    <a class="back-link" href="/dashboard.html">&larr; Back to dashboard</a>
+    <div class="card" id="issue-card"><div class="empty">Loading...</div></div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script>
+    requireLogin();
+    renderNavbar("");
+
+    const issueId = new URLSearchParams(window.location.search).get("id");
+    const card = document.getElementById("issue-card");
+    const STATUSES = ["Open", "In Progress", "Resolved"];
+
+    function render(issue) {
+      const currentIndex = STATUSES.indexOf(issue.status);
+      const steps = STATUSES.map((s, index) => {
+        const cls = index === currentIndex ? "current" : index < currentIndex ? "done" : "";
+        return `<button type="button" class="step ${cls}" data-status="${s}"
+                  ${index === currentIndex ? 'disabled aria-current="step"' : ""}>${s}</button>`;
+      }).join("");
+
+      card.innerHTML = `
+        <div class="issue-row issue-head">
+          <h1>${esc(issue.title)}</h1>
+          ${statusBadge(issue.status)}
+        </div>
+
+        <dl class="detail-meta">
+          <dt>Category</dt><dd>${categoryTag(issue.category)}</dd>
+          <dt>Reported by</dt><dd>${esc(issue.author)}</dd>
+          <dt>Submitted</dt><dd>${formatDate(issue.created_at)}</dd>
+          <dt>Last updated</dt><dd>${formatDate(issue.updated_at)}</dd>
+          <dt>Issue ID</dt><dd>#${issue.id}</dd>
+        </dl>
+
+        <h2>Description</h2>
+        <div class="description">${esc(issue.description)}</div>
+
+        <h2 style="margin-top:28px">Update status</h2>
+        <div class="steps">${steps}</div>
+        <div id="message" class="message" role="alert"></div>`;
+
+      card.querySelectorAll("button[data-status]").forEach((btn) => {
+        btn.addEventListener("click", () => changeStatus(btn.dataset.status));
+      });
+    }
+
+    async function changeStatus(status) {
+      try {
+        await api(`/issues/${issueId}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status }),
+        });
+        loadIssue();
+      } catch (err) {
+        showMessage(document.getElementById("message"), err.message);
+      }
+    }
+
+    async function loadIssue() {
+      if (!issueId) {
+        card.innerHTML = '<div class="empty"><strong>No issue selected</strong>Pick one from the dashboard.</div>';
+        return;
+      }
+      try {
+        render(await api("/issues/" + encodeURIComponent(issueId)));
+      } catch (err) {
+        card.innerHTML = `<div class="empty"><strong>Couldn't load this issue</strong>${esc(err.message)}</div>`;
+      }
+    }
+
+    loadIssue();
+  </script>
+</body>
+</html>

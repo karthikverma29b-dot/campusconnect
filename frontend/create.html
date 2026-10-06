@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CampusConnect - Report an issue</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar" id="navbar"></header>
+
+  <main class="container" style="max-width:680px">
+    <div class="page-head">
+      <h1>Report an issue</h1>
+      <p class="muted">Say what's wrong and where, so someone can fix it.</p>
+    </div>
+
+    <div class="card">
+      <form id="issue-form">
+        <label for="title">Title</label>
+        <input id="title" type="text" minlength="3" maxlength="100" placeholder="e.g. Projector not working in Room 204" required>
+
+        <label for="category">Category</label>
+        <select id="category" required>
+          <option value="">Select a category</option>
+        </select>
+
+        <label for="description">Description</label>
+        <textarea id="description" minlength="5" maxlength="1000" placeholder="What is the problem, and where exactly is it?" required></textarea>
+
+        <button class="full" type="submit">Submit issue</button>
+        <div id="message" class="message" role="alert"></div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script>
+    requireLogin();
+    renderNavbar("create.html");
+
+    const categorySelect = document.getElementById("category");
+    const message = document.getElementById("message");
+
+    api("/categories").then((meta) => {
+      meta.categories.forEach((c) => categorySelect.add(new Option(c, c)));
+    });
+
+    document.getElementById("issue-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearMessage(message);
+      try {
+        const data = await api("/issues", {
+          method: "POST",
+          body: JSON.stringify({
+            title: document.getElementById("title").value,
+            category: categorySelect.value,
+            description: document.getElementById("description").value,
+          }),
+        });
+        window.location.href = "/issue.html?id=" + data.id;
+      } catch (err) {
+        showMessage(message, err.message);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CampusConnect - Log in</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-page">
+    <section class="auth-art">
+      <div class="brand"><span class="brand-mark">!</span>CampusConnect</div>
+
+      <div>
+        <h1>Spot it. Report it. <mark>Watch it get fixed.</mark></h1>
+        <p class="lead">One place for broken fans, dead Wi-Fi and lost ID cards, with a status you can actually follow.</p>
+
+        <div class="slips" aria-hidden="true">
+          <div class="slip slip-1">
+            <strong>Projector not working</strong>
+            <span class="meta">Classroom, Room 204</span><br>
+            <span class="badge Open">Open</span>
+          </div>
+          <div class="slip slip-2">
+            <strong>Wi-Fi down in the library</strong>
+            <span class="meta">Campus</span><br>
+            <span class="badge In-Progress">In Progress</span>
+          </div>
+          <div class="slip slip-3">
+            <strong>Found: blue water bottle</strong>
+            <span class="meta">Lost &amp; Found</span><br>
+            <span class="badge Resolved">Resolved</span>
+          </div>
+        </div>
+      </div>
+
+      <span></span>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-box">
+        <h2 id="auth-title">Welcome back</h2>
+        <p class="sub" id="auth-sub">Log in to see what's happening on campus.</p>
+
+        <div class="tabs">
+          <button type="button" id="tab-login" class="active">Log in</button>
+          <button type="button" id="tab-register">Create account</button>
+        </div>
+
+        <form id="login-form">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" autocomplete="email" required>
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" autocomplete="current-password" required>
+          <button class="full" type="submit">Log in</button>
+        </form>
+
+        <form id="register-form" style="display:none">
+          <label for="reg-name">Full name</label>
+          <input id="reg-name" type="text" minlength="2" autocomplete="name" required>
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" autocomplete="email" required>
+          <label for="reg-password">Password (at least 6 characters)</label>
+          <input id="reg-password" type="password" minlength="6" autocomplete="new-password" required>
+          <button class="full" type="submit">Create account</button>
+        </form>
+
+        <div id="message" class="message" role="alert"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    // Already logged in? Go straight to the dashboard.
+    if (getToken()) window.location.href = "/dashboard.html";
+
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    const tabLogin = document.getElementById("tab-login");
+    const tabRegister = document.getElementById("tab-register");
+    const message = document.getElementById("message");
+    const title = document.getElementById("auth-title");
+    const sub = document.getElementById("auth-sub");
+
+    function showTab(which) {
+      const isLogin = which === "login";
+      loginForm.style.display = isLogin ? "block" : "none";
+      registerForm.style.display = isLogin ? "none" : "block";
+      tabLogin.classList.toggle("active", isLogin);
+      tabRegister.classList.toggle("active", !isLogin);
+      title.textContent = isLogin ? "Welcome back" : "Join your campus";
+      sub.textContent = isLogin
+        ? "Log in to see what's happening on campus."
+        : "Create an account to report and track issues.";
+      clearMessage(message);
+    }
+    tabLogin.addEventListener("click", () => showTab("login"));
+    tabRegister.addEventListener("click", () => showTab("register"));
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearMessage(message);
+      try {
+        const data = await api("/login", {
+          method: "POST",
+          body: JSON.stringify({
+            email: document.getElementById("login-email").value,
+            password: document.getElementById("login-password").value,
+          }),
+        });
+        saveToken(data.token);
+        window.location.href = "/dashboard.html";
+      } catch (err) {
+        showMessage(message, err.message);
+      }
+    });
+
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearMessage(message);
+      try {
+        const data = await api("/register", {
+          method: "POST",
+          body: JSON.stringify({
+            name: document.getElementById("reg-name").value,
+            email: document.getElementById("reg-email").value,
+            password: document.getElementById("reg-password").value,
+          }),
+        });
+        saveToken(data.token);
+        window.location.href = "/dashboard.html";
+      } catch (err) {
+        showMessage(message, err.message);
+      }
+    });
+  </script>
+</body>
+</html>
