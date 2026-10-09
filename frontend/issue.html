@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,7 +12,9 @@
 
   <main class="container" style="max-width:760px">
     <a class="back-link" href="/dashboard.html">&larr; Back to dashboard</a>
-    <div class="card" id="issue-card"><div class="empty">Loading...</div></div>
+    <div class="card" id="issue-card">
+      <div class="empty">Loading...</div>
+    </div>
   </main>
 
   <script src="/js/app.js"></script>
@@ -25,10 +28,28 @@
 
     function render(issue) {
       const currentIndex = STATUSES.indexOf(issue.status);
-      const steps = STATUSES.map((s, index) => {
-        const cls = index === currentIndex ? "current" : index < currentIndex ? "done" : "";
-        return `<button type="button" class="step ${cls}" data-status="${s}"
-                  ${index === currentIndex ? 'disabled aria-current="step"' : ""}>${s}</button>`;
+
+      const steps = STATUSES.map((status, index) => {
+        const cls =
+          index === currentIndex
+            ? "current"
+            : index < currentIndex
+              ? "done"
+              : "";
+
+        // Only the next status can be selected.
+        const isNextStep = index === currentIndex + 1;
+        const isDisabled = !isNextStep;
+
+        return `
+          <button
+            type="button"
+            class="step ${cls}"
+            data-status="${status}"
+            ${isDisabled ? "disabled" : ""}
+            ${index === currentIndex ? 'aria-current="step"' : ""}
+          >${status}</button>
+        `;
       }).join("");
 
       card.innerHTML = `
@@ -38,11 +59,20 @@
         </div>
 
         <dl class="detail-meta">
-          <dt>Category</dt><dd>${categoryTag(issue.category)}</dd>
-          <dt>Reported by</dt><dd>${esc(issue.author)}</dd>
-          <dt>Submitted</dt><dd>${formatDate(issue.created_at)}</dd>
-          <dt>Last updated</dt><dd>${formatDate(issue.updated_at)}</dd>
-          <dt>Issue ID</dt><dd>#${issue.id}</dd>
+          <dt>Category</dt>
+          <dd>${categoryTag(issue.category)}</dd>
+
+          <dt>Reported by</dt>
+          <dd>${esc(issue.author)}</dd>
+
+          <dt>Submitted</dt>
+          <dd>${formatDate(issue.created_at)}</dd>
+
+          <dt>Last updated</dt>
+          <dd>${formatDate(issue.updated_at)}</dd>
+
+          <dt>Issue ID</dt>
+          <dd>#${issue.id}</dd>
         </dl>
 
         <h2>Description</h2>
@@ -50,34 +80,63 @@
 
         <h2 style="margin-top:28px">Update status</h2>
         <div class="steps">${steps}</div>
-        <div id="message" class="message" role="alert"></div>`;
+        <div id="message" class="message" role="alert"></div>
+      `;
 
-      card.querySelectorAll("button[data-status]").forEach((btn) => {
-        btn.addEventListener("click", () => changeStatus(btn.dataset.status));
+      card.querySelectorAll("button[data-status]").forEach((button) => {
+        button.addEventListener("click", () => {
+          changeStatus(button.dataset.status);
+        });
       });
     }
 
     async function changeStatus(status) {
+      const message = document.getElementById("message");
+      const buttons = card.querySelectorAll("button[data-status]");
+
+      // Prevent repeated clicks while the request is in progress.
+      buttons.forEach((button) => {
+        button.disabled = true;
+      });
+
       try {
-        await api(`/issues/${issueId}/status`, {
+        await api(`/issues/${encodeURIComponent(issueId)}/status`, {
           method: "PATCH",
           body: JSON.stringify({ status }),
         });
-        loadIssue();
+
+        await loadIssue();
       } catch (err) {
-        showMessage(document.getElementById("message"), err.message);
+        showMessage(message, err.message);
+
+        // Restore the button state using the current issue status.
+        await loadIssue();
       }
     }
 
     async function loadIssue() {
       if (!issueId) {
-        card.innerHTML = '<div class="empty"><strong>No issue selected</strong>Pick one from the dashboard.</div>';
+        card.innerHTML = `
+          <div class="empty">
+            <strong>No issue selected</strong>
+            Pick one from the dashboard.
+          </div>
+        `;
         return;
       }
+
       try {
-        render(await api("/issues/" + encodeURIComponent(issueId)));
+        const issue = await api(
+          "/issues/" + encodeURIComponent(issueId)
+        );
+        render(issue);
       } catch (err) {
-        card.innerHTML = `<div class="empty"><strong>Couldn't load this issue</strong>${esc(err.message)}</div>`;
+        card.innerHTML = `
+          <div class="empty">
+            <strong>Couldn't load this issue</strong>
+            ${esc(err.message)}
+          </div>
+        `;
       }
     }
 
