@@ -117,7 +117,7 @@ git push -u origin feature/your-feature
 
 | Name | Contribution |
 |------|--------------|
-| Manpreet Kaur|  |
-| Jasman| _e.g. Login / Register page_ |
-| Deepak Gupta | _e.g. Dashboard and issue details_ |
-| Karthik Verma | _e.g. Database, README, testing_ |
+| Manpreet Kaur| Authentication & profile |
+| Jasman| Dashboard |
+| Deepak Gupta | Issue management |
+| Karthik Verma |backend & database|
