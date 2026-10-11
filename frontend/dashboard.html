@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CampusConnect - Dashboard</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="navbar" id="navbar"></header>
@@ -41,9 +41,14 @@
     const categorySelect = document.getElementById("filter-category");
     const list = document.getElementById("issue-list");
 
-    api("/me").then((u) => {
-      document.getElementById("greeting").textContent = "Hi " + u.name.split(" ")[0] + ", here's the campus board";
-    });
+    api("/me")
+  .then((u) => {
+    document.getElementById("greeting").textContent =
+      "Hi " + u.name.split(" ")[0] + ", here's the campus board";
+  })
+  .catch(() => {
+    document.getElementById("greeting").textContent = "Campus issues";
+  });
 
     async function loadFilters() {
       const meta = await api("/categories");
@@ -58,9 +63,9 @@
 
       try {
         const data = await api("/issues?" + params.toString());
-        document.getElementById("count-open").textContent = data.summary["Open"];
-        document.getElementById("count-progress").textContent = data.summary["In Progress"];
-        document.getElementById("count-resolved").textContent = data.summary["Resolved"];
+        document.getElementById("count-open").textContent = data.summary["Open"] ?? 0;
+        document.getElementById("count-progress").textContent = data.summary["In Progress"] ?? 0;
+        document.getElementById("count-resolved").textContent = data.summary["Resolved"] ?? 0;
 
         if (data.issues.length === 0) {
           list.innerHTML = '<div class="empty"><strong>No issues here yet</strong>Change the filters, or report the first one.</div>';
@@ -69,7 +74,7 @@
         list.innerHTML = data.issues
           .map(
             (i) => `
-          <a class="issue-item st-${statusClass(i.status)}" href="/issue.html?id=${i.id}">
+          <a class="issue-item st-${statusClass(i.status)}" href="/issue.html?id=${encodeURIComponent(i.id)}">
             <div class="issue-row">
               <span class="title">${esc(i.title)}</span>
               ${statusBadge(i.status)}
@@ -89,7 +94,12 @@
 
     statusSelect.addEventListener("change", loadIssues);
     categorySelect.addEventListener("change", loadIssues);
-    loadFilters().then(loadIssues);
+    loadFilters()
+  .then(loadIssues)
+  .catch((err) => {
+    list.innerHTML =
+      `<div class="empty"><strong>Couldn't load dashboard</strong>${esc(err.message)}</div>`;
+  });
   </script>
 </body>
 </html>
