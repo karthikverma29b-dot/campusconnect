@@ -117,7 +117,7 @@ git push -u origin feature/your-feature
 
 | Name | Contribution |
 |------|--------------|
-| _Member 1_ | _e.g. Backend API_ |
-| _Member 2_ | _e.g. Login / Register page_ |
-| _Member 3_ | _e.g. Dashboard and issue details_ |
-| _Member 4_ | _e.g. Database, README, testing_ |
+| Manpreet Kaur|  |
+| Jasman| _e.g. Login / Register page_ |
+| Deepak Gupta | _e.g. Dashboard and issue details_ |
+| Karthik Verma | _e.g. Database, README, testing_ |
