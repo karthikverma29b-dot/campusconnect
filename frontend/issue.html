@@ -1,19 +1,145 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CampusConnect - Issue details</title>
+  <title>CampusConnect - Issue Details</title>
   <link rel="stylesheet" href="/css/style.css">
+
+  <style>
+    .issue-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .detail-meta {
+      display: grid;
+      grid-template-columns: minmax(100px, 140px) 1fr;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .detail-meta dt {
+      font-weight: 600;
+      color: #777;
+    }
+
+    .detail-meta dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .priority-badge {
+      display: inline-block;
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #eee;
+      color: #333;
+    }
+
+    .priority-high {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .priority-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .priority-low {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .description {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.7;
+    }
+
+    .steps {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 16px 0;
+    }
+
+    .step {
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .step:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    .step.current {
+      border-color: #2563eb;
+      background: #2563eb;
+      color: white;
+    }
+
+    .step.done {
+      border-color: #16a34a;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .step:focus-visible {
+      outline: 3px solid #93c5fd;
+      outline-offset: 3px;
+    }
+
+    .message {
+      margin-top: 12px;
+    }
+
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    @media (max-width: 480px) {
+      .detail-meta {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+
+      .detail-meta dd {
+        margin-bottom: 12px;
+      }
+
+      .steps {
+        flex-direction: column;
+      }
+
+      .step {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
+
 <body>
   <header class="navbar" id="navbar"></header>
 
   <main class="container" style="max-width:760px">
-    <a class="back-link" href="/dashboard.html">&larr; Back to dashboard</a>
-    <div class="card" id="issue-card">
-      <div class="empty">Loading...</div>
+    <a class="back-link" href="/dashboard.html">
+      &larr; Back to dashboard
+    </a>
+
+    <div class="card" id="issue-card" aria-live="polite">
+      <div class="empty">Loading issue details...</div>
     </div>
   </main>
 
@@ -22,39 +148,73 @@
     requireLogin();
     renderNavbar("");
 
-    const issueId = new URLSearchParams(window.location.search).get("id");
+    const issueId = new URLSearchParams(
+      window.location.search
+    ).get("id");
+
     const card = document.getElementById("issue-card");
+
     const STATUSES = ["Open", "In Progress", "Resolved"];
 
+    let currentIssue = null;
+    let updating = false;
+
+    function priorityBadge(priority) {
+      if (!priority) {
+        return '<span class="priority-badge">Not set</span>';
+      }
+
+      const normalized = String(priority).toLowerCase();
+
+      const classes = {
+        low: "priority-low",
+        medium: "priority-medium",
+        high: "priority-high"
+      };
+
+      const cls = classes[normalized] || "";
+
+      return `
+        <span class="priority-badge ${cls}">
+          ${esc(String(priority))}
+        </span>
+      `;
+    }
+
     function render(issue) {
+      currentIssue = issue;
+
       const currentIndex = STATUSES.indexOf(issue.status);
 
       const steps = STATUSES.map((status, index) => {
-        const cls =
-          index === currentIndex
-            ? "current"
-            : index < currentIndex
-              ? "done"
-              : "";
-
-        // Only the next status can be selected.
+        const isCurrent = index === currentIndex;
+        const isDone = currentIndex >= 0 && index < currentIndex;
         const isNextStep = index === currentIndex + 1;
-        const isDisabled = !isNextStep;
+
+        const cls = isCurrent
+          ? "current"
+          : isDone
+            ? "done"
+            : "";
+
+        const disabled = !isNextStep || updating;
 
         return `
           <button
             type="button"
             class="step ${cls}"
             data-status="${status}"
-            ${isDisabled ? "disabled" : ""}
-            ${index === currentIndex ? 'aria-current="step"' : ""}
-          >${status}</button>
+            ${disabled ? "disabled" : ""}
+            ${isCurrent ? 'aria-current="step"' : ""}
+          >
+            ${isDone ? "✓ " : ""}${status}
+          </button>
         `;
       }).join("");
 
       card.innerHTML = `
         <div class="issue-row issue-head">
-          <h1>${esc(issue.title)}</h1>
+          <h1>${esc(issue.title || "Untitled issue")}</h1>
           ${statusBadge(issue.status)}
         </div>
 
@@ -62,8 +222,11 @@
           <dt>Category</dt>
           <dd>${categoryTag(issue.category)}</dd>
 
+          <dt>Priority</dt>
+          <dd>${priorityBadge(issue.priority)}</dd>
+
           <dt>Reported by</dt>
-          <dd>${esc(issue.author)}</dd>
+          <dd>${esc(issue.author || "Unknown")}</dd>
 
           <dt>Submitted</dt>
           <dd>${formatDate(issue.created_at)}</dd>
@@ -72,18 +235,29 @@
           <dd>${formatDate(issue.updated_at)}</dd>
 
           <dt>Issue ID</dt>
-          <dd>#${issue.id}</dd>
+          <dd>#${esc(String(issue.id))}</dd>
         </dl>
 
         <h2>Description</h2>
-        <div class="description">${esc(issue.description)}</div>
+        <div class="description">${esc(
+          issue.description || "No description provided."
+        )}</div>
 
-        <h2 style="margin-top:28px">Update status</h2>
-        <div class="steps">${steps}</div>
-        <div id="message" class="message" role="alert"></div>
+        <h2 style="margin-top:28px">Issue progress</h2>
+
+        <p>
+          Current status:
+          <strong>${esc(issue.status || "Unknown")}</strong>
+        </p>
+
+        <div class="steps" aria-label="Update issue status">
+          ${steps}
+        </div>
+
+        <p class="message" id="message" role="status"></p>
       `;
 
-      card.querySelectorAll("button[data-status]").forEach((button) => {
+      card.querySelectorAll("button[data-status]").forEach(button => {
         button.addEventListener("click", () => {
           changeStatus(button.dataset.status);
         });
@@ -91,35 +265,67 @@
     }
 
     async function changeStatus(status) {
-      const message = document.getElementById("message");
-      const buttons = card.querySelectorAll("button[data-status]");
+      if (updating || !currentIssue) return;
 
-      // Prevent repeated clicks while the request is in progress.
-      buttons.forEach((button) => {
+      const currentIndex = STATUSES.indexOf(currentIssue.status);
+
+      // Only allow moving to the next status.
+      if (
+        !STATUSES.includes(status) ||
+        STATUSES.indexOf(status) !== currentIndex + 1
+      ) {
+        return;
+      }
+
+      updating = true;
+      card.classList.add("loading");
+
+      // Immediately disable status buttons during the request.
+      card.querySelectorAll("button[data-status]").forEach(button => {
         button.disabled = true;
       });
 
+      const message = document.getElementById("message");
+
+      if (message) {
+        message.textContent = "Updating issue status...";
+      }
+
       try {
-        await api(`/issues/${encodeURIComponent(issueId)}/status`, {
-          method: "PATCH",
-          body: JSON.stringify({ status }),
-        });
+        await api(
+          `/issues/${encodeURIComponent(issueId)}/status`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ status })
+          }
+        );
 
         await loadIssue();
       } catch (err) {
-        showMessage(message, err.message);
+        if (message) {
+          message.textContent =
+            err.message || "Unable to update issue status.";
+        }
 
-        // Restore the button state using the current issue status.
-        await loadIssue();
+        // Restore the current issue and its available actions.
+        render(currentIssue);
+      } finally {
+        updating = false;
+        card.classList.remove("loading");
+
+        // Re-render to restore the correct enabled buttons.
+        if (currentIssue) {
+          render(currentIssue);
+        }
       }
     }
 
     async function loadIssue() {
-      if (!issueId) {
+      if (!issueId || !/^\d+$/.test(issueId)) {
         card.innerHTML = `
           <div class="empty">
-            <strong>No issue selected</strong>
-            Pick one from the dashboard.
+            <strong>Invalid issue ID</strong>
+            <p>Please select a valid issue from the dashboard.</p>
           </div>
         `;
         return;
@@ -129,14 +335,22 @@
         const issue = await api(
           "/issues/" + encodeURIComponent(issueId)
         );
+
         render(issue);
       } catch (err) {
         card.innerHTML = `
           <div class="empty">
             <strong>Couldn't load this issue</strong>
-            ${esc(err.message)}
+            <p>${esc(err.message || "Please try again.")}</p>
+            <button type="button" id="retry-button">
+              Retry
+            </button>
           </div>
         `;
+
+        document
+          .getElementById("retry-button")
+          .addEventListener("click", loadIssue);
       }
     }
 
@@ -144,3 +358,4 @@
   </script>
 </body>
 </html>
+```
